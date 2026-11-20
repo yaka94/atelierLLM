@@ -357,7 +357,7 @@ export const PREDICTION_STEPS: PredictionStep[] = [
   {
     id: 'cat-bowl',
     prefixKid: 'Dans le jardin magique, le petit chat boit son bol de',
-    prefixAdult: 'Contexte factuel : « La capitale de la France, traversée par la Seine, est »',
+    prefixAdult: 'Contexte créatif : « Dans le conte, le chat curieux s’approche de son bol de »',
     candidates: [
       { token: 'lait', logit: 4.3, kidHint: 'Très logique !', isFactual: true },
       { token: 'crème', logit: 2.9, kidHint: 'Possible et gourmand', isFactual: true },

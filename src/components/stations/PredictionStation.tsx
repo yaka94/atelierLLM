@@ -276,9 +276,11 @@ export function PredictionStation({
           <button
             type="button"
             onClick={onGoToQuiz}
-            className="rounded-xl bg-[#E8A62E] px-5 py-4 text-sm font-extrabold text-[#131D38] shadow-sm hover:bg-[#F3B946] transition-colors cursor-pointer"
+            className="rounded-xl bg-[#131D38] px-5 py-4 text-sm font-extrabold text-[#F6C453] shadow-sm hover:bg-[#1E2D55] transition-colors cursor-pointer"
           >
-            Passer au Grand Quiz Adaptatif ★
+            {ageMode === 'kid'
+              ? 'Station suivante : L’École & la Boussole →'
+              : 'Station suivante : Comment une IA s’entraîne →'}
           </button>
         </aside>
       </div>

@@ -225,7 +225,7 @@ export function ContextRagStation({
               <p className="mt-1 text-xs text-[#46536E]">
                 {ageMode === 'kid'
                   ? 'Calcule juste au lieu de deviner les chiffres !'
-                  : 'Appelle une fonction déterministe (`calc()`, API web, code).'}
+                  : 'Appelle un outil exact (calculatrice, recherche web, code).'}
               </p>
             </button>
           </div>

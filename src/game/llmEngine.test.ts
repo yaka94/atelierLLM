@@ -265,3 +265,39 @@ test('simulateReasoningBudget shows CoT and Verification dramatically outperform
   assert.ok(verify.accuracyPercent > cot.accuracyPercent);
   assert.ok(cot.accuracyPercent > direct.accuracyPercent);
 });
+
+test('lumiFacts provides rich unique LLM facts for every station in both kid and adult modes', async () => {
+  const { LUMI_FACTS_ADULT, LUMI_FACTS_KID, getFactsForContext, getNextFactIndex } = await import(
+    './lumiFacts'
+  );
+
+  assert.ok(LUMI_FACTS_KID.length >= 12);
+  assert.ok(LUMI_FACTS_ADULT.length >= 12);
+
+  const kidIds = new Set(LUMI_FACTS_KID.map((f) => f.id));
+  const adultIds = new Set(LUMI_FACTS_ADULT.map((f) => f.id));
+  assert.equal(kidIds.size, LUMI_FACTS_KID.length);
+  assert.equal(adultIds.size, LUMI_FACTS_ADULT.length);
+
+  const stationIds = [
+    'tokens',
+    'attention',
+    'layers',
+    'omni',
+    'prediction',
+    'training',
+    'context_rag',
+    'reasoning',
+  ] as const;
+
+  for (const stationId of stationIds) {
+    const kidOrdered = getFactsForContext('kid', stationId);
+    const adultOrdered = getFactsForContext('adult', stationId);
+    assert.equal(kidOrdered[0].stationId, stationId);
+    assert.equal(adultOrdered[0].stationId, stationId);
+  }
+
+  assert.equal(getNextFactIndex(0, 14), 1);
+  assert.equal(getNextFactIndex(13, 14), 0);
+});
+

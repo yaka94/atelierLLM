@@ -10,12 +10,14 @@ interface GameHudProps {
   adultScore: number;
   muted: boolean;
   voiceOn: boolean;
+  lumiOpen: boolean;
   onChangeAgeMode: (mode: AgeMode) => void;
   onBackToMap: () => void;
   onToggleVoice: () => void;
   onToggleMute: () => void;
   onPause: () => void;
   onOpenGlossary: () => void;
+  onToggleLumi: () => void;
 }
 
 export function GameHud({
@@ -27,12 +29,14 @@ export function GameHud({
   adultScore,
   muted,
   voiceOn,
+  lumiOpen,
   onChangeAgeMode,
   onBackToMap,
   onToggleVoice,
   onToggleMute,
   onPause,
   onOpenGlossary,
+  onToggleLumi,
 }: GameHudProps) {
   const currentMeta = activeStation ? STATIONS.find((s) => s.id === activeStation) : null;
   const viewLabel =
@@ -53,7 +57,7 @@ export function GameHud({
       : 'Atelier';
 
   return (
-    <div className="relative z-20 flex flex-wrap items-center justify-between gap-2.5 border-b border-[#D8CEB9] bg-[#131D38] px-3 py-2.5 text-[#FBF7EF] md:px-6">
+    <div className="relative md:[@media(min-height:560px)]:sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2 border-b border-[#D8CEB9] bg-[#131D38] px-3 py-2 text-[#FBF7EF] md:px-6">
       {/* Left: Back button + Current location */}
       <div className="flex items-center gap-2.5 min-w-0">
         {playView !== 'map' ? (
@@ -94,9 +98,9 @@ export function GameHud({
       </div>
 
       {/* Center: 8 Custom SVG Crystal Sockets + Always-Visible Dual Clickable Score Counters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <div
-          className="flex items-center gap-1"
+          className="flex items-center gap-0.5 sm:gap-1"
           aria-label={`Cristaux gagnés (${ageMode === 'kid' ? 'Enfant' : 'Adulte'}) : ${progress.unlockedCrystals.length} sur ${STATIONS.length}`}
         >
           {STATIONS.map((station) => {
@@ -105,7 +109,7 @@ export function GameHud({
               <svg
                 key={station.id}
                 viewBox="0 0 24 24"
-                className="w-5 h-5 transition-transform duration-200"
+                className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200"
                 style={{ transform: filled ? 'scale(1.08)' : 'scale(1)' }}
                 aria-hidden="true"
               >
@@ -130,7 +134,7 @@ export function GameHud({
         <div
           role="group"
           aria-label={`Compteurs séparés — Enfant : ${Math.round(kidScore)} points, Adulte : ${Math.round(adultScore)} points`}
-          className="flex items-center gap-1.5 border-l border-white/15 pl-3"
+          className="flex items-center gap-1.5 sm:border-l sm:border-white/15 sm:pl-3"
         >
           <button
             type="button"
@@ -173,8 +177,34 @@ export function GameHud({
         </div>
       </div>
 
-      {/* Right: Explicitly Labeled Controls (Glossary, Voice, Sound, Pause) for Beginner & Senior Clarity */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      {/* Right: Explicitly Labeled Controls (Lumi 3D Facts, Glossary, Voice, Sound, Pause) */}
+      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.currentTarget.blur();
+            onToggleLumi();
+          }}
+          aria-expanded={lumiOpen}
+          aria-label={lumiOpen ? 'Ranger Lumi 3D dans la barre' : 'Ouvrir Lumi 3D et les anecdotes sur les LLM'}
+          title={lumiOpen ? 'Ranger Lumi 3D' : 'Ouvrir Lumi 3D · Anecdotes LLM'}
+          className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
+            lumiOpen
+              ? 'border-[#F6C453] bg-[#E8A62E] text-[#131D38]'
+              : 'border-[#E8A62E]/60 bg-[#1D2B4F] text-[#F6D58E] hover:bg-[#273864]'
+          }`}
+        >
+          <span
+            className={`inline-block h-2 w-2 rounded-full ${
+              lumiOpen ? 'bg-[#131D38]' : 'bg-[#F6C453]'
+            }`}
+            aria-hidden="true"
+          />
+          <span>Lumi 3D</span>
+          <span className="hidden xl:inline opacity-80 font-semibold">· Faits IA</span>
+        </button>
+
         {ageMode === 'adult' && (
           <button
             type="button"

@@ -89,7 +89,7 @@ export function OmniStation({
                     playClick();
                     setMode(m.id);
                   }}
-                  className={`rounded-xl border-2 px-3 py-2.5 text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                  className={`rounded-xl border-2 px-2.5 py-2.5 text-center text-xs font-bold leading-snug transition-colors cursor-pointer ${
                     active
                       ? 'border-[#7C4D9E] bg-[#F3E8FF] text-[#4C1D95]'
                       : 'border-[#E2D8C4] bg-[#FBF7EF] text-[#46536E] hover:border-[#7C4D9E]/50'

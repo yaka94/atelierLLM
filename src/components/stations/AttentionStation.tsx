@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ART_ASSETS, ATTENTION_SENTENCES } from '../../game/content';
 import { computeAttentionScores } from '../../game/llmEngine';
 import { playBeamChime, playClick } from '../../game/sound';
@@ -24,10 +24,43 @@ export function AttentionStation({
   const [focusIdx, setFocusIdx] = useState(sentence.defaultFocusIndex);
   const [headIdx, setHeadIdx] = useState(0);
 
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [layoutMetrics, setLayoutMetrics] = useState<{ width: number; centers: number[] }>({
+    width: 640,
+    centers: [],
+  });
+
   const result = useMemo(
     () => computeAttentionScores(sentence, focusIdx, headIdx),
     [sentence, focusIdx, headIdx]
   );
+
+  const measureCenters = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const row = stage.lastElementChild as HTMLElement | null;
+    const width = Math.max(row?.scrollWidth ?? 0, stage.clientWidth, 320);
+    const centers = sentence.tokens.map((_, idx) => {
+      const btn = buttonRefs.current[idx];
+      if (!btn) return ((idx + 0.5) / sentence.tokens.length) * width;
+      return btn.offsetLeft + btn.offsetWidth / 2;
+    });
+    setLayoutMetrics({ width, centers });
+  }, [sentence.tokens]);
+
+  useLayoutEffect(() => {
+    measureCenters();
+    const stage = stageRef.current;
+    if (!stage) return;
+    const ro = new ResizeObserver(() => measureCenters());
+    ro.observe(stage);
+    window.addEventListener('resize', measureCenters);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measureCenters);
+    };
+  }, [measureCenters, ageMode, sentenceIdx]);
 
   const handleSelectSentence = (idx: number) => {
     playClick();
@@ -37,9 +70,10 @@ export function AttentionStation({
   };
 
   const tokenCount = sentence.tokens.length;
-  const svgWidth = 760;
+  const svgWidth = layoutMetrics.width;
   const svgHeight = 148;
-  const xForIdx = (i: number) => ((i + 0.5) / tokenCount) * svgWidth;
+  const xForIdx = (i: number) =>
+    layoutMetrics.centers[i] ?? ((i + 0.5) / tokenCount) * svgWidth;
 
   return (
     <main className="mx-auto flex w-full max-w-[1280px] flex-1 flex-col gap-6 px-4 py-6 pb-28 md:px-8">
@@ -107,13 +141,13 @@ export function AttentionStation({
             ))}
           </div>
 
-          {/* Interactive Luminous SVG Attention Arcs */}
-          <div className="rounded-2xl border border-[#24345C] bg-[#131D38] p-5 text-[#FBF7EF] space-y-4">
+          {/* Interactive Luminous SVG Attention Arcs (Unified Stage: exact button-center alignment) */}
+          <div className="rounded-2xl border border-[#24345C] bg-[#131D38] p-5 text-[#FBF7EF] space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="text-[#F6D58E] font-semibold">
                 {ageMode === 'kid'
                   ? `Lampe pointée depuis « ${result.queryToken} » → éclaire surtout « ${result.topTargetToken} »`
-                  : `Query(« ${result.queryToken} ») → Key max : « ${result.topTargetToken} » (${Math.round(result.topWeight * 100)} %)`}
+                  : `Mot observé (« ${result.queryToken} ») → lien principal : « ${result.topTargetToken} » (${Math.round(result.topWeight * 100)} %)`}
               </span>
               {ageMode === 'adult' && (
                 <span className="font-mono text-[#93C5FD]">
@@ -122,98 +156,115 @@ export function AttentionStation({
               )}
             </div>
 
-            <div className="w-full overflow-x-auto">
-              <svg
-                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                className="w-full min-w-[540px] h-auto"
-                role="img"
-                aria-label={`Faisceaux d’attention reliant ${result.queryToken} aux autres mots de la phrase`}
-              >
-                {/* Attention arcs from focusIdx to every key */}
-                {sentence.tokens.map((_, keyIdx) => {
-                  const weight = result.weights[keyIdx];
-                  if (weight < 0.04 || keyIdx === focusIdx) return null;
-                  const x1 = xForIdx(focusIdx);
-                  const x2 = xForIdx(keyIdx);
-                  const midX = (x1 + x2) / 2;
-                  const arcHeight = Math.min(115, 28 + Math.abs(x2 - x1) * 0.28);
-                  const cy = svgHeight - 24 - arcHeight;
-                  const isStrongest = keyIdx === result.topTargetIndex;
+            <div className="w-full overflow-x-auto pb-1">
+              <div ref={stageRef} className="relative inline-flex flex-col min-w-full">
+                <svg
+                  width={svgWidth}
+                  height={svgHeight}
+                  viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                  className="block overflow-visible"
+                  role="img"
+                  aria-label={`Faisceaux d’attention reliant ${result.queryToken} aux autres mots de la phrase`}
+                >
+                  {/* Attention arcs from focusIdx to every key */}
+                  {sentence.tokens.map((_, keyIdx) => {
+                    const weight = result.weights[keyIdx];
+                    if (weight < 0.04 || keyIdx === focusIdx) return null;
+                    const x1 = xForIdx(focusIdx);
+                    const x2 = xForIdx(keyIdx);
+                    const midX = (x1 + x2) / 2;
+                    const arcHeight = Math.min(112, 30 + Math.abs(x2 - x1) * 0.28);
+                    const cy = svgHeight - 24 - arcHeight;
+                    const isStrongest = keyIdx === result.topTargetIndex;
 
-                  return (
-                    <g key={keyIdx}>
-                      <path
-                        d={`M ${x1} ${svgHeight - 22} Q ${midX} ${cy} ${x2} ${svgHeight - 22}`}
-                        fill="none"
-                        stroke={isStrongest ? '#F6C453' : '#7DD3FC'}
-                        strokeWidth={Math.max(1.5, weight * 11)}
-                        strokeOpacity={Math.min(1, 0.25 + weight * 1.1)}
-                        strokeLinecap="round"
-                      />
-                      {isStrongest && (
-                        <text
-                          x={midX}
-                          y={Math.max(18, cy + 12)}
-                          textAnchor="middle"
-                          fill="#FDE68A"
-                          fontSize="12"
-                          fontWeight="700"
-                          fontFamily="JetBrains Mono, monospace"
-                        >
-                          {Math.round(weight * 100)}%
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
+                    return (
+                      <g key={keyIdx}>
+                        <path
+                          d={`M ${x1} ${svgHeight - 22} Q ${midX} ${cy} ${x2} ${svgHeight - 22}`}
+                          fill="none"
+                          stroke={isStrongest ? '#F6C453' : '#7DD3FC'}
+                          strokeWidth={Math.max(1.6, weight * 11)}
+                          strokeOpacity={Math.min(1, 0.28 + weight * 1.1)}
+                          strokeLinecap="round"
+                        />
+                        {isStrongest && (
+                          <text
+                            x={midX}
+                            y={Math.max(16, (svgHeight - 22 + cy) / 2 - 12)}
+                            textAnchor="middle"
+                            fill="#FDE68A"
+                            fontSize="12"
+                            fontWeight="700"
+                            fontFamily="JetBrains Mono, monospace"
+                          >
+                            {Math.round(weight * 100)}%
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
 
-                {/* Baseline nodes */}
-                {sentence.tokens.map((_, i) => {
-                  const cx = xForIdx(i);
-                  const isFocus = i === focusIdx;
-                  const isTop = i === result.topTargetIndex;
-                  return (
-                    <circle
-                      key={i}
-                      cx={cx}
-                      cy={svgHeight - 22}
-                      r={isFocus ? 7 : isTop ? 6 : 3.5}
-                      fill={isFocus ? '#F6C453' : isTop ? '#38BDF8' : '#536792'}
-                    />
-                  );
-                })}
-              </svg>
-            </div>
+                  {/* Baseline stems & nodes locked directly above each word center */}
+                  {sentence.tokens.map((_, i) => {
+                    const cx = xForIdx(i);
+                    const isFocus = i === focusIdx;
+                    const isTop = i === result.topTargetIndex;
+                    return (
+                      <g key={i}>
+                        <line
+                          x1={cx}
+                          y1={svgHeight - 20}
+                          x2={cx}
+                          y2={svgHeight}
+                          stroke={isFocus ? '#F6C453' : isTop ? '#38BDF8' : '#32456E'}
+                          strokeWidth={isFocus || isTop ? 2 : 1.2}
+                          strokeDasharray={isFocus || isTop ? undefined : '2 3'}
+                        />
+                        <circle
+                          cx={cx}
+                          cy={svgHeight - 22}
+                          r={isFocus ? 7 : isTop ? 6 : 3.5}
+                          fill={isFocus ? '#F6C453' : isTop ? '#38BDF8' : '#536792'}
+                        />
+                      </g>
+                    );
+                  })}
+                </svg>
 
-            {/* Clickable Word Buttons */}
-            <div className="flex flex-wrap gap-2">
-              {sentence.tokens.map((word, idx) => {
-                const weight = result.weights[idx];
-                const pct = Math.round(weight * 100);
-                const isFocus = idx === focusIdx;
-                const isTop = idx === result.topTargetIndex;
+                {/* Clickable Word Buttons on a single aligned row directly beneath their nodes */}
+                <div className="flex items-stretch justify-between gap-1 pt-1 w-full">
+                  {sentence.tokens.map((word, idx) => {
+                    const weight = result.weights[idx];
+                    const pct = Math.round(weight * 100);
+                    const isFocus = idx === focusIdx;
+                    const isTop = idx === result.topTargetIndex;
 
-                return (
-                  <button
-                    key={`${word}-${idx}`}
-                    type="button"
-                    onClick={() => {
-                      playBeamChime();
-                      setFocusIdx(idx);
-                    }}
-                    className={`flex flex-col items-center rounded-xl border px-3 py-2 text-sm font-bold transition-all duration-150 cursor-pointer ${
-                      isFocus
-                        ? 'border-[#F6C453] bg-[#F6C453] text-[#131D38] scale-105'
-                        : isTop
-                        ? 'border-[#38BDF8] bg-[#1E3A5F] text-white'
-                        : 'border-white/15 bg-[#1C2A4D] text-[#D7E2F7] hover:border-[#F6C453]/60'
-                    }`}
-                  >
-                    <span>{word}</span>
-                    <span className="font-mono text-[10px] opacity-85 tabular-nums">{pct}%</span>
-                  </button>
-                );
-              })}
+                    return (
+                      <button
+                        key={`${sentence.id}-${idx}`}
+                        ref={(el) => {
+                          buttonRefs.current[idx] = el;
+                        }}
+                        type="button"
+                        onClick={() => {
+                          playBeamChime();
+                          setFocusIdx(idx);
+                        }}
+                        className={`flex flex-1 flex-col items-center justify-center rounded-lg border px-1.5 py-1.5 text-xs font-bold transition-colors duration-150 cursor-pointer whitespace-nowrap ${
+                          isFocus
+                            ? 'border-[#F6C453] bg-[#F6C453] text-[#131D38] shadow-[0_0_16px_rgba(246,196,83,0.35)]'
+                            : isTop
+                            ? 'border-[#38BDF8] bg-[#1E3A5F] text-white'
+                            : 'border-white/15 bg-[#1C2A4D] text-[#D7E2F7] hover:border-[#F6C453]/60'
+                        }`}
+                      >
+                        <span>{word}</span>
+                        <span className="font-mono text-[10px] opacity-85 tabular-nums">{pct}%</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </section>

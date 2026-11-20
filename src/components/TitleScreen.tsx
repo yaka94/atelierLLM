@@ -89,9 +89,11 @@ export function TitleScreen({
     <div
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative h-screen w-screen overflow-hidden bg-[#131D38] text-[#FBF7EF] select-none"
+      className="relative min-h-dvh w-full overflow-x-hidden overflow-y-auto bg-[#131D38] text-[#FBF7EF] select-none"
       style={{ perspective: '1100px' }}
     >
+      {/* Clipped 3D Parallax Background Stage (never causes scrollbars, lets foreground scroll if viewport is short) */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ perspective: '1100px' }}>
       {/* DEPTH LAYER 0 (Far Plane): Observatory Key-Art with 3D Z-depth perspective tilt */}
       <div
         ref={farLayerRef}
@@ -310,10 +312,14 @@ export function TitleScreen({
         </svg>
       </div>
 
-      {/* Measured contrast scrim strictly over the left negative space */}
+      {/* Measured contrast scrim strictly over the left negative space (stronger on narrow mobile for legibility) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 bg-[#0E162E]/70 md:bg-transparent"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none hidden md:block absolute inset-0"
         style={{
           background:
             'linear-gradient(90deg, rgba(14, 22, 46, 0.90) 0%, rgba(14, 22, 46, 0.72) 38%, rgba(14, 22, 46, 0.14) 68%, rgba(14, 22, 46, 0.04) 100%)',
@@ -322,20 +328,21 @@ export function TitleScreen({
 
       {/* Isolated Canvas2D golden dust motes */}
       <AmbientCanvas active={true} />
+      </div>
 
       {/* DEPTH LAYER 3 (Foreground UI Plane): Left-third Title Lockup & Controls */}
       <div
         ref={foregroundUiRef}
-        className="relative z-10 flex h-full flex-col justify-between px-8 py-8 md:px-14 md:py-12 will-change-transform"
+        className="relative z-10 flex min-h-dvh flex-col justify-between gap-3 px-5 py-4 sm:px-8 sm:py-6 md:px-14 md:py-10 [@media(max-height:560px)]:py-3 [@media(max-height:560px)]:gap-2 will-change-transform"
       >
-        <div className="h-2" />
+        <div className="hidden md:block [@media(max-height:560px)]:hidden h-1" />
 
-        <div className="max-w-lg space-y-6">
+        <div className="w-full max-w-lg space-y-3.5 sm:space-y-5 [@media(max-height:560px)]:space-y-2.5 my-auto">
           {/* Custom Inline SVG Title Lockup */}
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3 [@media(max-height:560px)]:space-y-1.5">
             <svg
               viewBox="0 0 460 132"
-              className="w-full max-w-[440px] h-auto overflow-visible"
+              className="w-full max-w-[270px] sm:max-w-[360px] md:max-w-[430px] [@media(max-height:560px)]:max-w-[240px] [@media(max-height:460px)]:max-w-[205px] h-auto overflow-visible"
               role="img"
               aria-label="L'Atelier des LLM"
             >
@@ -417,25 +424,25 @@ export function TitleScreen({
               <circle cx="298" cy="116" r="4" fill="#F6C453" />
             </svg>
 
-            <p className="text-base leading-relaxed text-[#E3E9F5] max-w-md">
+            <p className="text-sm sm:text-base [@media(max-height:560px)]:text-xs [@media(max-height:560px)]:leading-snug leading-relaxed text-[#E3E9F5] max-w-md">
               Comprenez en jouant à la souris comment une IA lit vos mots, relie les idées, apprend, consulte des sources et réfléchit — sans aucun prérequis.
             </p>
           </div>
 
           {/* Mode Selector (Enfant 5+ vs Adulte) with Separate Score Indicators */}
-          <div className="space-y-2.5">
-            <span className="block text-xs font-medium text-[#C9D4EA]">
+          <div className="space-y-1.5 sm:space-y-2 [@media(max-height:560px)]:space-y-1">
+            <span className="block text-xs font-medium text-[#C9D4EA] [@media(max-height:460px)]:hidden">
               Choisis ton parcours (deux compteurs séparés)
             </span>
             <div
               role="group"
               aria-label="Choix du mode de difficulté"
-              className="inline-flex rounded-xl bg-[#0D152B]/90 p-1.5 border border-[#E8A62E]/35"
+              className="flex flex-wrap sm:inline-flex gap-1 rounded-xl bg-[#0D152B]/90 p-1.5 [@media(max-height:560px)]:p-1 border border-[#E8A62E]/35"
             >
               <button
                 type="button"
                 onClick={() => onSelectAgeMode('kid')}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-300 ${
+                className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 [@media(max-height:560px)]:py-1.5 [@media(max-height:560px)]:text-xs rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-300 ${
                   ageMode === 'kid'
                     ? 'bg-[#E8A62E] text-[#131D38] shadow-sm'
                     : 'text-[#DCE4F5] hover:text-white'
@@ -455,7 +462,7 @@ export function TitleScreen({
               <button
                 type="button"
                 onClick={() => onSelectAgeMode('adult')}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-300 ${
+                className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 [@media(max-height:560px)]:py-1.5 [@media(max-height:560px)]:text-xs rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-300 ${
                   ageMode === 'adult'
                     ? 'bg-[#E8A62E] text-[#131D38] shadow-sm'
                     : 'text-[#DCE4F5] hover:text-white'
@@ -473,7 +480,7 @@ export function TitleScreen({
                 </span>
               </button>
             </div>
-            <p className="text-xs text-[#C6D2E8] max-w-md">
+            <p className="text-xs text-[#C6D2E8] max-w-md [@media(max-height:500px)]:hidden">
               {ageMode === 'kid'
                 ? 'Avec Lumi le robot : perles de mots, histoires interactives, quiz visuels et lecture vocale.'
                 : 'Accessible aux débutants comme aux curieux techniques : explications en clair, glossaire intégré et laboratoires interactifs.'}
@@ -481,12 +488,12 @@ export function TitleScreen({
           </div>
 
           {/* Primary Start CTA + Secondary Succès Dashboard Button */}
-          <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-0.5">
             <button
               type="button"
               data-start="true"
               onClick={onStart}
-              className="inline-flex items-center gap-3 rounded-xl bg-[#E8A62E] px-7 py-4 text-base font-bold text-[#131D38] shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-transform duration-150 hover:bg-[#F3B946] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300"
+              className="inline-flex items-center gap-2.5 sm:gap-3 rounded-xl bg-[#E8A62E] px-5 py-3 sm:px-7 sm:py-3.5 [@media(max-height:560px)]:px-5 [@media(max-height:560px)]:py-2.5 text-sm sm:text-base [@media(max-height:560px)]:text-sm font-bold text-[#131D38] shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-transform duration-150 hover:bg-[#F3B946] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300"
             >
               <span>Commencer l’aventure</span>
               <svg viewBox="0 0 20 20" className="w-5 h-5" fill="none" aria-hidden="true">
@@ -503,9 +510,9 @@ export function TitleScreen({
             <button
               type="button"
               onClick={onOpenAchievements}
-              className="inline-flex items-center gap-2.5 rounded-xl border border-[#E8A62E]/50 bg-[#131D38]/85 px-5 py-4 text-sm font-bold text-[#F6D58E] shadow-[0_6px_18px_rgba(0,0,0,0.28)] transition-all duration-150 hover:border-[#F6C453] hover:bg-[#1C2A4D] hover:-translate-y-0.5 cursor-pointer whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E8A62E]/50 bg-[#131D38]/85 px-4 py-3 sm:px-5 sm:py-3.5 [@media(max-height:560px)]:px-4 [@media(max-height:560px)]:py-2.5 text-xs sm:text-sm font-bold text-[#F6D58E] shadow-[0_6px_18px_rgba(0,0,0,0.28)] transition-all duration-150 hover:border-[#F6C453] hover:bg-[#1C2A4D] hover:-translate-y-0.5 cursor-pointer whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300"
             >
-              <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" fill="none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" fill="none" aria-hidden="true">
                 <path
                   d="M8 4h8v4a4 4 0 0 1-8 0V4zM6 5H4v2a3 3 0 0 0 3 3M18 5h2v2a3 3 0 0 1-3 3M12 12v5M8.5 20h7"
                   stroke="currentColor"
@@ -522,7 +529,7 @@ export function TitleScreen({
         </div>
 
         {/* Single flat borderless bottom control hint line */}
-        <div className="text-xs font-medium text-[#C5D1E8]/85 tracking-wide">
+        <div className="hidden sm:block [@media(max-height:560px)]:hidden text-xs font-medium text-[#C5D1E8]/85 tracking-wide">
           Souris : Bouger pour la profondeur 3D &amp; Cliquer · Entrée / Espace : Commencer · M : Son
         </div>
       </div>

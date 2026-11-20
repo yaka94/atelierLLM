@@ -24,6 +24,7 @@ import {
   unlockCrystal,
   updateProgressForMode,
 } from './game/llmEngine';
+import { getFactsForContext, getNextFactIndex } from './game/lumiFacts';
 import {
   isMuted,
   isVoiceEnabled,
@@ -31,6 +32,7 @@ import {
   playFanfare,
   setMuted,
   setVoiceEnabled,
+  speakFrench,
   stopSpeaking,
 } from './game/sound';
 import type {
@@ -79,179 +81,6 @@ function getInitialBootParams(): { autostart: boolean; mode: AgeMode } {
   return { autostart, mode };
 }
 
-const POKE_TIPS_KID: { emotion: RobotEmotion; text: string }[] = [
-  {
-    emotion: 'idea',
-    text: 'Un token, c’est comme une petite perle de syllabe que je lis une par une !',
-  },
-  {
-    emotion: 'curious',
-    text: 'Essaie de bouger la souris doucement sur l’observatoire pour voir la profondeur 3D !',
-  },
-  {
-    emotion: 'happy',
-    text: 'Tes points Enfant et Adulte sont rangés dans deux bocaux séparés !',
-  },
-  {
-    emotion: 'celebrating',
-    text: 'Chaque cristal débloqué ajoute un beau badge dans ton tableau Succès !',
-  },
-];
-
-const POKE_TIPS_ADULT: { emotion: RobotEmotion; text: string }[] = [
-  {
-    emotion: 'idea',
-    text: 'BPE découpe les mots fréquents en un seul token et les mots rares en sous-unités.',
-  },
-  {
-    emotion: 'thinking',
-    text: 'Dans LFM3, des couches convolutives courtes remplacent une partie de l’attention quadratique.',
-  },
-  {
-    emotion: 'curious',
-    text: 'Les scores Enfant et Adulte restent strictement isolés quand vous basculez de mode.',
-  },
-  {
-    emotion: 'surprised',
-    text: 'Un modèle Omni projette patchs ViT, audio et texte dans le même espace latent !',
-  },
-];
-
-function getContextualRobotState(
-  phase: GamePhase,
-  playView: PlayView,
-  activeStation: StationId | null,
-  ageMode: AgeMode
-): { emotion: RobotEmotion; message: string } {
-  if (phase === 'title') {
-    return ageMode === 'kid'
-      ? {
-          emotion: 'happy',
-          message:
-            'Coucou ! Je suis Lumi en 3D ! Bouge ta souris pour voir la profondeur et choisis ton parcours !',
-        }
-      : {
-          emotion: 'curious',
-          message:
-            'Bonjour ! Déplacez la souris pour explorer la parallaxe 3D, ou lancez le parcours Adulte.',
-        };
-  }
-
-  if (playView === 'map') {
-    return ageMode === 'kid'
-      ? {
-          emotion: 'curious',
-          message:
-            'Quelle station veux-tu ouvrir ? Clique sur une carte illustrée pour gagner un cristal !',
-        }
-      : {
-          emotion: 'curious',
-          message:
-            'Sélectionnez un module (Tokens, Attention, LFM3, Omni-Vision) ou testez le Quiz adaptatif.',
-        };
-  }
-
-  if (playView === 'quiz') {
-    return {
-      emotion: 'thinking',
-      message:
-        ageMode === 'kid'
-          ? 'Prends ton temps ! Le quiz s’adapte tout seul à tes réponses.'
-          : 'Quiz adaptatif actif : la difficulté s’ajuste dynamiquement selon votre série.',
-    };
-  }
-
-  if (playView === 'lumi') {
-    return {
-      emotion: 'happy',
-      message:
-        'Youpi, tu es dans mon coin histoires ! Pose-moi une question ou écoute une fable.',
-    };
-  }
-
-  if (playView === 'achievements') {
-    return {
-      emotion: 'celebrating',
-      message:
-        ageMode === 'kid'
-          ? 'Voici tous tes badges du mode Enfant ! Change de mode pour voir ceux des Adultes.'
-          : 'Tableau des Succès isolé pour ce parcours : stations, score et quiz.',
-    };
-  }
-
-  switch (activeStation) {
-    case 'tokens':
-      return {
-        emotion: 'idea',
-        message:
-          ageMode === 'kid'
-            ? 'Clique sur les perles de mots pour voir comment je découpe les phrases !'
-            : 'Observez la segmentation BPE et les IDs numériques injectés dans la table d’embeddings.',
-      };
-    case 'attention':
-      return {
-        emotion: 'thinking',
-        message:
-          ageMode === 'kid'
-            ? 'Allume les fils dorés pour relier le pronom au bon mot !'
-            : 'Survolez un token Query pour inspecter les poids d’attention Softmax(Q·Kᵀ/√d).',
-      };
-    case 'layers':
-      return {
-        emotion: 'thinking',
-        message:
-          ageMode === 'kid'
-            ? 'Grimpe les étages de la grande tour : chaque étage comprend un peu mieux !'
-            : 'Comparez le flux couche par couche : Transformer Dense, MoE sparse et hybride LFM3.',
-      };
-    case 'omni':
-      return {
-        emotion: 'surprised',
-        message:
-          ageMode === 'kid'
-            ? 'Regarde ! Je peux voir des images, écouter des sons et lire des mots ensemble !'
-            : 'Omni-Vision : les patchs d’image (ViT) rejoignent directement les tokens texte.',
-      };
-    case 'prediction':
-      return {
-        emotion: 'idea',
-        message:
-          ageMode === 'kid'
-            ? 'Tourne la roue magique de créativité pour voir quel mot arrive ensuite !'
-            : 'Ajustez la température τ pour observer la redistribution Softmax et les hallucinations.',
-      };
-    case 'training':
-      return {
-        emotion: 'curious',
-        message:
-          ageMode === 'kid'
-            ? 'Clique sur les 3 classes de mon école : livres, questions et boussole aux étoiles !'
-            : 'Comparez Pré-entraînement brut, SFT et alignement RLHF/DPO sur le même prompt.',
-      };
-    case 'context_rag':
-      return {
-        emotion: 'thinking',
-        message:
-          ageMode === 'kid'
-            ? 'Remplis mon sac à dos mémoire et allume la bibliothèque RAG + la calculatrice !'
-            : 'Observez l’éviction du contexte, Lost in the Middle et le gain du RAG + Tool Calling.',
-      };
-    case 'reasoning':
-      return {
-        emotion: 'idea',
-        message:
-          ageMode === 'kid'
-            ? 'Ouvre le Carnet de Brouillon pour voir comment je résous l’énigme des pommes sans erreur !'
-            : 'Comparez génération directe (System 1) vs Chain-of-Thought et auto-vérification.',
-      };
-    default:
-      return {
-        emotion: 'happy',
-        message: 'Clique sur moi à tout moment pour une astuce sur les LLM !',
-      };
-  }
-}
-
 export default function App() {
   const boot = getInitialBootParams();
   const [phase, setPhase] = useState<GamePhase>(boot.autostart ? 'playing' : 'title');
@@ -264,9 +93,11 @@ export default function App() {
   const [quizSessionKey, setQuizSessionKey] = useState(0);
   const [showTitleAchievements, setShowTitleAchievements] = useState(false);
   const [showGlossary, setShowGlossary] = useState(false);
-  const [pokeIndex, setPokeIndex] = useState(0);
+  const [lumiOpen, setLumiOpen] = useState(false);
+  const [factIndex, setFactIndex] = useState(0);
   const [robotOverride, setRobotOverride] = useState<{
     emotion: RobotEmotion;
+    tag: string;
     message: string;
   } | null>(null);
   const [lastQuizSummary, setLastQuizSummary] = useState<{
@@ -283,13 +114,16 @@ export default function App() {
     [activeProgress]
   );
 
-  const defaultRobot = useMemo(
-    () => getContextualRobotState(phase, playView, activeStation, ageMode),
-    [phase, playView, activeStation, ageMode]
+  // Contextual LLM facts bank ordered with active station facts first
+  const contextualFacts = useMemo(
+    () => getFactsForContext(ageMode, activeStation),
+    [ageMode, activeStation]
   );
+  const currentFact = contextualFacts[factIndex % contextualFacts.length] ?? contextualFacts[0];
 
-  const robotEmotion = robotOverride?.emotion ?? defaultRobot.emotion;
-  const robotMessage = robotOverride?.message ?? defaultRobot.message;
+  const robotEmotion = robotOverride?.emotion ?? currentFact.emotion;
+  const robotTag = robotOverride?.tag ?? currentFact.tag;
+  const robotMessage = robotOverride?.message ?? currentFact.text;
 
   // Sync game state to document.body.dataset.state immediately
   useEffect(() => {
@@ -309,13 +143,8 @@ export default function App() {
     stopSpeaking();
     playClick();
     setAgeMode(nextMode);
-    setRobotOverride({
-      emotion: 'surprised',
-      message:
-        nextMode === 'kid'
-          ? 'Mode Enfant activé ! Ton compteur Enfant est prêt, séparé de celui des Adultes.'
-          : 'Mode Adulte activé ! Votre compteur Adulte reste indépendant du mode Enfant.',
-    });
+    setFactIndex(0);
+    setRobotOverride(null);
   }, []);
 
   const handleStartGame = useCallback(() => {
@@ -402,6 +231,7 @@ export default function App() {
     playClick();
     setShowTitleAchievements(false);
     setRobotOverride(null);
+    setFactIndex(0);
     setPhase('playing');
     setActiveStation(id);
     setPlayView('station');
@@ -457,10 +287,11 @@ export default function App() {
     );
     setRobotOverride({
       emotion: 'celebrating',
+      tag: 'Cristal débloqué !',
       message:
         ageMode === 'kid'
-          ? 'Hourra ! +120 points sur ton compteur Enfant et un nouveau cristal doré !'
-          : 'Cristal validé ! +120 points crédités sur votre compteur Adulte.',
+          ? 'Hourra ! +120 points sur ton compteur Enfant ! Clique sur « Autre secret IA » pour découvrir une anecdote étonnante.'
+          : 'Cristal validé ! +120 points crédités. Cliquez sur « Autre fait LLM » pour explorer une anecdote technique.',
     });
   };
 
@@ -485,6 +316,7 @@ export default function App() {
     );
     setRobotOverride({
       emotion: 'celebrating',
+      tag: 'Grand Quiz réussi !',
       message: `Bravo ! +${summary.bonusPoints} points sur le compteur ${
         ageMode === 'kid' ? 'Enfant' : 'Adulte'
       } !`,
@@ -493,14 +325,22 @@ export default function App() {
     setPhase('gameover');
   };
 
-  const handleRobotPoke = () => {
-    const pool = ageMode === 'kid' ? POKE_TIPS_KID : POKE_TIPS_ADULT;
-    const picked = pool[pokeIndex % pool.length];
-    setPokeIndex((i) => i + 1);
-    setRobotOverride({ emotion: picked.emotion, message: picked.text });
+  const handleNextLumiFact = () => {
+    stopSpeaking();
+    if (robotOverride) {
+      setRobotOverride(null);
+      return;
+    }
+    setFactIndex((prev) => getNextFactIndex(prev, contextualFacts.length));
   };
 
-  // Only float the 3D Clippy assistant inside the Atelier (never on TitleScreen where the painted robot stands!)
+  const handleToggleLumi = () => {
+    stopSpeaking();
+    playClick();
+    setLumiOpen((prev) => !prev);
+  };
+
+  // Only float the 3D assistant inside the Atelier when explicitly toggled open from the top HUD
   const showFloatingRobot =
     phase === 'playing' && !showTitleAchievements && !showGlossary;
 
@@ -553,6 +393,7 @@ export default function App() {
         adultScore={dualProgress.adult.score}
         muted={mutedState}
         voiceOn={voiceState}
+        lumiOpen={lumiOpen}
         onChangeAgeMode={switchAgeMode}
         onBackToMap={backToMap}
         onToggleVoice={handleToggleVoice}
@@ -562,6 +403,7 @@ export default function App() {
           playClick();
           setShowGlossary(true);
         }}
+        onToggleLumi={handleToggleLumi}
       />
 
       {playView === 'map' && (
@@ -602,15 +444,15 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => openStation(prevStation.id)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#D4C7AE] bg-white px-2.5 py-1 font-semibold text-[#172033] hover:border-[#C97714] cursor-pointer whitespace-nowrap"
+                  className="inline-flex max-w-[46%] items-center gap-1 rounded-lg border border-[#D4C7AE] bg-white px-2.5 py-1 font-semibold text-[#172033] hover:border-[#C97714] cursor-pointer"
                 >
-                  <span>← {prevStation.order}. {ageMode === 'kid' ? prevStation.titleKid : prevStation.titleAdult}</span>
+                  <span className="truncate">← {prevStation.order}. {ageMode === 'kid' ? prevStation.titleKid : prevStation.titleAdult}</span>
                 </button>
               ) : (
-                <span className="text-[#6B768E] font-medium">Début du parcours</span>
+                <span className="text-[#6B768E] font-medium truncate">Début du parcours</span>
               )}
 
-              <span className="hidden sm:inline font-mono font-bold text-[#8C530A] tabular-nums">
+              <span className="hidden md:inline font-mono font-bold text-[#8C530A] tabular-nums shrink-0">
                 Station {idx + 1} / {STATIONS.length}
               </span>
 
@@ -618,17 +460,17 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => openStation(nextStation.id)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#D4C7AE] bg-white px-2.5 py-1 font-semibold text-[#0F769E] hover:border-[#0F769E] cursor-pointer whitespace-nowrap"
+                  className="inline-flex max-w-[46%] items-center gap-1 rounded-lg border border-[#D4C7AE] bg-white px-2.5 py-1 font-semibold text-[#0F769E] hover:border-[#0F769E] cursor-pointer"
                 >
-                  <span>{nextStation.order}. {ageMode === 'kid' ? nextStation.titleKid : nextStation.titleAdult} →</span>
+                  <span className="truncate">{nextStation.order}. {ageMode === 'kid' ? nextStation.titleKid : nextStation.titleAdult} →</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={openQuiz}
-                  className="inline-flex items-center gap-1 rounded-lg bg-[#131D38] px-3 py-1 font-bold text-[#F6C453] hover:bg-[#1E2D55] cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#131D38] px-3 py-1 font-bold text-[#F6C453] hover:bg-[#1E2D55] cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  <span>Grand Quiz Adaptatif →</span>
+                  <span>Grand Quiz →</span>
                 </button>
               )}
             </div>
@@ -734,14 +576,19 @@ export default function App() {
 
       {showFloatingRobot && (
         <ClippyRobot3D
+          open={lumiOpen}
           ageMode={ageMode}
           emotion={robotEmotion}
+          tag={robotTag}
           message={robotMessage}
-          autoOpenBubble={robotOverride !== null}
-          onSelectEmotion={(em, tip) =>
-            setRobotOverride({ emotion: em, message: tip ?? robotMessage })
-          }
-          onPokeTip={handleRobotPoke}
+          factNumber={(factIndex % contextualFacts.length) + 1}
+          factTotal={contextualFacts.length}
+          onNextFact={handleNextLumiFact}
+          onSpeakMessage={() => speakFrench(robotMessage)}
+          onClose={() => {
+            stopSpeaking();
+            setLumiOpen(false);
+          }}
         />
       )}
 
