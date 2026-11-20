@@ -3,12 +3,20 @@ import stationTokensArt from '../assets/images/station_tokens_1795174386993.jpg'
 import stationAttentionArt from '../assets/images/station_attention_1795174386741.jpg';
 import stationLayersArt from '../assets/images/station_layers_lfm_1795174385307.jpg';
 import stationOmniArt from '../assets/images/station_omni_vision_1795174385226.jpg';
-import stationTrainingArt from '../assets/images/station_training_rlhf_1795181143537.jpg';
-import stationContextRagArt from '../assets/images/station_context_rag_1795181141934.jpg';
-import stationReasoningArt from '../assets/images/station_reasoning_cot_1795181142943.jpg';
-import rewardStationsMedallionArt from '../assets/images/reward_stations_medallion_1795180565887.jpg';
-import rewardScoreTrophyArt from '../assets/images/reward_score_trophy_1795180565773.jpg';
-import rewardQuizPrismArt from '../assets/images/reward_quiz_prism_1795180566468.jpg';
+
+const OPTIONAL_IMAGES = import.meta.glob('../assets/images/*.jpg', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+
+function resolveOptionalArt(filename: string, fallback: string): string {
+  return OPTIONAL_IMAGES[`../assets/images/${filename}`] ?? fallback;
+}
+
+function makeMedalSvg(bgA: string, bgB: string, accent: string, symbol: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${bgA}"/><stop offset="100%" stop-color="${bgB}"/></linearGradient></defs><rect width="120" height="120" rx="22" fill="url(#g)"/><circle cx="60" cy="60" r="42" fill="none" stroke="${accent}" stroke-width="4"/><circle cx="60" cy="60" r="34" fill="${accent}" fill-opacity="0.16"/><text x="60" y="72" text-anchor="middle" font-size="38" fill="${accent}" font-family="sans-serif">${symbol}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
 
 import type {
   AttentionSentence,
@@ -24,15 +32,24 @@ export const ART_ASSETS = {
   attention: stationAttentionArt,
   layers: stationLayersArt,
   omni: stationOmniArt,
-  training: stationTrainingArt,
-  contextRag: stationContextRagArt,
-  reasoning: stationReasoningArt,
+  training: resolveOptionalArt('station_training_rlhf_1795181143537.jpg', stationLayersArt),
+  contextRag: resolveOptionalArt('station_context_rag_1795181141934.jpg', stationTokensArt),
+  reasoning: resolveOptionalArt('station_reasoning_cot_1795181142943.jpg', stationAttentionArt),
 } as const;
 
 export const REWARD_ASSETS = {
-  stationsMedallion: rewardStationsMedallionArt,
-  scoreTrophy: rewardScoreTrophyArt,
-  quizPrism: rewardQuizPrismArt,
+  stationsMedallion: resolveOptionalArt(
+    'reward_stations_medallion_1795180565887.jpg',
+    makeMedalSvg('#131D38', '#233A6E', '#F6C453', '★')
+  ),
+  scoreTrophy: resolveOptionalArt(
+    'reward_score_trophy_1795180565773.jpg',
+    makeMedalSvg('#1F2D4A', '#3B2814', '#F59E0B', '🏆')
+  ),
+  quizPrism: resolveOptionalArt(
+    'reward_quiz_prism_1795180566468.jpg',
+    makeMedalSvg('#1A2347', '#3B1E59', '#38BDF8', '◆')
+  ),
 } as const;
 
 export interface StationMeta {
