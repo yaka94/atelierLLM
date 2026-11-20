@@ -1,0 +1,6 @@
+{
+  "name": "L'Atelier des LLM",
+  "description": "Jeu éducatif illustré et navigable à la souris pour comprendre les LLM (tokens, attention, couches LFM3/MoE/Transformer, vision & omni, température), adapté aux enfants dès 5 ans et aux adultes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
